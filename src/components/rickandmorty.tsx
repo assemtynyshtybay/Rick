@@ -1,8 +1,11 @@
-import {styled} from '@mui/material';
-import { useEffect } from 'react'
+import {styled, Pagination, FormControl, MenuItem, InputLabel, Select, CircularProgress  } from '@mui/material';
+import { useEffect, useCallback } from 'react'
+import { useDispatch } from 'react-redux';
 import { useCharActions } from '../hooks/useCharAction';
 import { useTypedSelector } from '../hooks/useTypedSelector';
+import { RickActionType } from '../types/characterTypes';
 import { RickItem } from './itemRick';
+
 const Avatar = styled('img')`
   width: 80px;
   height: 130px;
@@ -32,16 +35,22 @@ const  Card = styled('div')`
   display: flex;
 `
 export function RickList() {
-    const { characters, loading } = useTypedSelector((state) => state.rick)
+    const { characters, loading, sortBy, pageInfo } = useTypedSelector((state) => state.rick)
+    const dispatch = useDispatch();
     const { fetchChars } = useCharActions();
-
+    console.log('rick',characters)
     useEffect(() => {
-        fetchChars()
+      fetchChars({page: 1, sort: 'alive'})
     }, [fetchChars])
-
+    const searchCharacter = useCallback(({ page = 1, sort = sortBy }) => {
+      fetchChars({page, sort})
+    }, [sortBy, fetchChars]);
+    const setSortBy = useCallback((payload: string) => {
+      dispatch({type: RickActionType.SORT_CHARACTER , payload: payload})
+    }, [dispatch]);
     if (loading) {
         return (
-            <h1>Загрузка пользователей</h1>
+          <CircularProgress />
         )
     }
     /* if (error) {
@@ -49,14 +58,36 @@ export function RickList() {
             <h1 style={{ border: '1px solid red' }}>{error}</h1>
         )
     } */
+    
 
     return (
       <div>
-          <Cards>
-              {characters.map((char) => (
-                <RickItem key={char.id} char={char} />
-              ))}
-          </Cards>
+        <div style={{ marginLeft: '500px', marginTop: '100px', flexGrow: 1, maxWidth: '300px' }}>
+              <FormControl fullWidth>
+                  <InputLabel id="demo-simple-select-label">Sort By</InputLabel>
+                  <Select
+                      labelId="demo-simple-select-label"
+                      id="demo-simple-select"
+                      value={sortBy}
+                      label="Sort by"
+                      onChange={(e) => {
+                          setSortBy(e.target.value);
+                          searchCharacter({ sort: e.target.value })
+                      }}
+                      size="small"
+                  >
+                      <MenuItem value="alive">Alive</MenuItem>
+                      <MenuItem value="unknown">Unknown</MenuItem>
+                      <MenuItem value="dead">Dead</MenuItem>
+                  </Select>
+              </FormControl>
+      </div>
+        <Cards>
+            {characters.results && characters.results.map((char) => (
+              <RickItem key={char.id} char={char} />
+            ))}
+        </Cards>
+        <Pagination count={pageInfo.total_page} page={pageInfo.page} onChange={(e, value) => searchCharacter({ page: value })}/>
       </div> 
     )
 }
